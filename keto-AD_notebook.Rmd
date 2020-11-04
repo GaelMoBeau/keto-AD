@@ -1,0 +1,138 @@
+---
+title: "Keto-AD_notebook"
+author: "GMB"
+date: "03/11/2020"
+output: html_document
+---
+Open R and load libraries
+```{r setup, eval=FALSE, include=FALSE}
+library(TCC)
+library(dplyr)
+library(pheatmap)
+library(hablar)
+library(forcats)
+library(pheatmap)
+library(ggrepel)
+library(dendsort)
+library(pheatmap)
+library(extrafont)
+library(biomaRt)
+library(VennDiagram)
+library(data.table)
+```
+
+import raw counts
+```{r}
+RAWcounts <- read.table("summary_star_genes_readcount.stranded.annotated.tsv", stringsAsFactors = FALSE, header = T, row.names = 1)
+
+#keep only protein coding entries
+RAWcounts_genes <- RAWcounts[RAWcounts$Category %like% "protein_coding",] #%like% from data.table package
+RAWcounts_genes <- RAWcounts_genes[-c(1:4),]
+
+#clean up the output, 
+rownames(RAWcounts_genes) <- make.unique(RAWcounts_genes[,"Name"], sep = ".") #set row names
+RAWcounts_genes <- RAWcounts_genes[,1:24] #keep only data columns
+
+```
+
+2020-11-03: generate normalized table of all protein_coding transcripts
+```{r}
+group <- c(1,1,1,2,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6)
+full <- count ~ condition
+reduced <- count ~ 1
+tcc_transcripts <- new("TCC", RAWcounts_genes, group)
+tcc_transcripts <- calcNormFactors(tcc_transcripts, norm.method = "tmm", test.method = "edger", iteration = 3, full = full, reduced = reduced)
+
+normCounts_transcripts <- as.data.frame(getNormalizedData(tcc_transcripts))
+
+write.csv(normCounts_transcripts, file = "normalized_genes.csv")
+```
+
+
+Identify DEGs between all samples and generate crude heatmap
+```{r}
+
+#get DEG
+tcc_transcripts <- estimateDE(tcc_transcripts, test.method = "deseq2", FDR = 0.1)
+result <- getResult(tcc_transcripts, sort = F)
+table(tcc_transcripts$estimatedDEG) #644 DEG or 1042 (@ pVal < 0.01)
+plot(tcc_transcripts)
+
+#generate mean values table
+normCounts_mean <- as.data.frame(cbind(rowMeans(normCounts_transcripts[,1:3]), rowMeans(normCounts_transcripts[,4:8]), rowMeans(normCounts_transcripts[,9:12]), rowMeans(normCounts_transcripts[,13:16]), rowMeans(normCounts_transcripts[,17:20]), rowMeans(normCounts_transcripts[,21:24])))
+colnames(normCounts_mean) <- c("3xTg_C", "3xTg_K", "3xTg_M", "WT_C", "WT_K", "WT_M")
+
+#keep only DEG
+normCounts_mean_DEG_FDR01 <- normCounts_mean[result$estimatedDEG == 1,]
+normCounts_mean_DEG_001 <- normCounts_mean[result$p.value < 0.01,]
+normCounts_DEG_001 <- normCounts_transcripts[result$p.value < 0.01,]
+
+#generate heatmap
+hm_mean_DEG <- pheatmap(normCounts_mean_DEG_001, scale = "row", clustering_distance_rows = "correlation", show_rownames = F, treeheight_col = 10, cellwidth = 40)
+hm_DEG <- pheatmap(normCounts_DEG_001, scale = "row", clustering_distance_rows = "correlation", show_rownames = F, treeheight_col = 10, cellwidth = 10)
+```
+
+
+generate pair analysis objects
+```{r}
+WTvs3xTg_C_counts <- RAWcounts_genes[,c(13:16, 1:3)]
+WT_CvsM_counts <- RAWcounts_genes[,c(13:16,21:24)]
+Tg_CvsM_counts <- RAWcounts_genes[,c(1:3,9:12)]
+WT_CvsK_counts <- RAWcounts_genes[,c(13:16, 17:20)]
+Tg_CvsK_counts <- RAWcounts_genes[,c(1:8)]
+WT_Cvs_3xTg_M_counts <- RAWcounts_genes[,c(13:16, 9:12)]
+
+group_pairs43 <- c(1,1,1,1,2,2,2)
+group_pairs44 <- c(1,1,1,1,2,2,2,2)
+group_pairs34 <- c(1,1,1,2,2,2,2)
+group_pairs35 <- c(1,1,1,2,2,2,2,2)
+
+#create TCC objects
+WTvs3xTg_C <- new("TCC", WTvs3xTg_C_counts, group = group_pairs43)
+WT_CvsM <- new("TCC", WT_CvsM_counts, group = group_pairs44)
+Tg_CvsM <- new("TCC", Tg_CvsM_counts, group = group_pairs34)
+WT_CvsK <- new("TCC", WT_CvsK_counts, group = group_pairs44)
+Tg_CvsK <- new("TCC", Tg_CvsK_counts, group = group_pairs35)
+WT_Cvs_3xTg_M <- new("TCC", WT_Cvs_3xTg_M_counts, group = group_pairs44)
+
+WTvs3xTg_C <- degAnalysis(WTvs3xTg_C)
+WTvs3xTg_C_analysis <- degAnalysisFile(WTvs3xTg_C)
+WTvs3xTg_C_analysis %>% mutate("DEG_pval001" = WTvs3xTg_C_analysis$p.value < 0.01) -> WTvs3xTg_C_analysis
+write.csv(WTvs3xTg_C_analysis, file = "WTvs3xTg_C.csv")
+
+WT_CvsM <- degAnalysis(WT_CvsM)
+WT_CvsM_analysis <- degAnalysisFile(WT_CvsM)
+WT_CvsM_analysis %>% mutate("DEG_pval001" = WT_CvsM_analysis$p.value < 0.01) -> WT_CvsM_analysis
+write.csv(WT_CvsM_analysis, file = "WT_CvsM.csv")
+
+WT_CvsK <- degAnalysis(WT_CvsK)
+WT_CvsK_analysis <- degAnalysisFile(WT_CvsK)
+WT_CvsK_analysis %>% mutate("DEG_pval001" = WT_CvsK_analysis$p.value < 0.01) -> WT_CvsK_analysis
+write.csv(WT_CvsK_analysis, file = "WT_CvsK.csv")
+
+Tg_CvsM <- degAnalysis(Tg_CvsM)
+Tg_CvsM_analysis <- degAnalysisFile(Tg_CvsM)
+Tg_CvsM_analysis %>% mutate("DEG_pval001" = Tg_CvsM_analysis$p.value < 0.01) -> Tg_CvsM_analysis
+write.csv(Tg_CvsM_analysis, file = "Tg_CvsM.csv")
+
+Tg_CvsK <- degAnalysis(Tg_CvsK)
+Tg_CvsK_analysis <- degAnalysisFile(Tg_CvsK)
+Tg_CvsK_analysis %>% mutate("DEG_pval001" = Tg_CvsK_analysis$p.value < 0.01) -> Tg_CvsK_analysis
+write.csv(Tg_CvsK_analysis, file = "Tg_CvsK.csv")
+
+WT_Cvs_3xTg_M <- degAnalysis(WT_Cvs_3xTg_M)
+WT_Cvs_3xTg_M_analysis <- degAnalysisFile(WT_Cvs_3xTg_M)
+WT_Cvs_3xTg_M_analysis %>% mutate("DEG_pval001" = WT_Cvs_3xTg_M_analysis$p.value < 0.01) -> WT_Cvs_3xTg_M_analysis
+write.csv(WT_Cvs_3xTg_M_analysis, file = "WT_Cvs_3xTg_M.csv")
+
+comparison_list <- c("WTvs3xTg_C_analysis", "WT_CvsK_analysis", "WT_CvsM_analysis", "Tg_CvsM_analysis", "Tg_CvsK_analysis", "WT_Cvs_3xTg_M_analysis" )
+
+for (i in comparison_list){
+  j <- get(i)
+  gpro_test <- gost(j[j$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP")
+  df <- apply(gpro_test$result, 2, as.character)
+  write.csv(df, file = paste(i,"_pathways.csv", sep = ""))
+}
+gpro_test <- gost(Tg_CvsK_analysis[Tg_CvsK_analysis$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP")
+```
+

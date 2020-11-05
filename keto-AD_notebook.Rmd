@@ -127,12 +127,31 @@ write.csv(WT_Cvs_3xTg_M_analysis, file = "WT_Cvs_3xTg_M.csv")
 
 comparison_list <- c("WTvs3xTg_C_analysis", "WT_CvsK_analysis", "WT_CvsM_analysis", "Tg_CvsM_analysis", "Tg_CvsK_analysis", "WT_Cvs_3xTg_M_analysis" )
 
+#pathway analysis on all DEGs
 for (i in comparison_list){
-  j <- get(i)
-  gpro_test <- gost(j[j$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP")
-  df <- apply(gpro_test$result, 2, as.character)
+  j <- get(i) #Add option to analyze all genes or split Up and downreg
+  gpro_test <- gost(j[j$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP", evcodes = T)
+  df <- as.data.frame(apply(gpro_test$result, 2, as.character))
   write.csv(df, file = paste(i,"_pathways.csv", sep = ""))
 }
-gpro_test <- gost(Tg_CvsK_analysis[Tg_CvsK_analysis$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP")
+
+#separate pathway analysis on up and down DEGs
+for (i in comparison_list){
+  j <- get(i) 
+  #upreg DEG
+  gpro_test <- gost(j[j$DEG_pval001 == T & j$rank > 0, 1], organism = "mmusculus", sources = "GO:BP", evcodes = T)
+  if gpro_test !is.null{
+    df <- as.data.frame(apply(gpro_test$result, 2, as.character))
+    write.csv(df, file = paste(i,"_upreg_pathways.csv", sep = ""))
+  }
+  
+  #downreg DEG
+  gpro_test <- gost(j[j$DEG_pval001 == T & j$rank < 0, 1], organism = "mmusculus", sources = "GO:BP", evcodes = T)
+  if gpro_test !is.null{
+    df <- as.data.frame(apply(gpro_test$result, 2, as.character))
+    write.csv(df, file = paste(i,"_downreg_pathways.csv", sep = ""))
+  }
+}
+#gpro_test <- gost(Tg_CvsK_analysis[Tg_CvsK_analysis$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP")
 ```
 

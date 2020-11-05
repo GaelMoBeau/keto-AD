@@ -140,18 +140,17 @@ for (i in comparison_list){
   j <- get(i) 
   #upreg DEG
   gpro_test <- gost(j[j$DEG_pval001 == T & j$rank > 0, 1], organism = "mmusculus", sources = "GO:BP", evcodes = T)
-  if gpro_test !is.null{
+  if (!is.null(gpro_test)){
     df <- as.data.frame(apply(gpro_test$result, 2, as.character))
     write.csv(df, file = paste(i,"_upreg_pathways.csv", sep = ""))
   }
   
   #downreg DEG
   gpro_test <- gost(j[j$DEG_pval001 == T & j$rank < 0, 1], organism = "mmusculus", sources = "GO:BP", evcodes = T)
-  if gpro_test !is.null{
+  if (!is.null(gpro_test)){
     df <- as.data.frame(apply(gpro_test$result, 2, as.character))
     write.csv(df, file = paste(i,"_downreg_pathways.csv", sep = ""))
   }
 }
-#gpro_test <- gost(Tg_CvsK_analysis[Tg_CvsK_analysis$DEG_pval001 == T, 1], organism = "mmusculus", sources = "GO:BP")
 ```
 

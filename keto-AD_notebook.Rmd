@@ -81,11 +81,13 @@ Tg_CvsM_counts <- RAWcounts_genes[,c(1:3,9:12)]
 WT_CvsK_counts <- RAWcounts_genes[,c(13:16, 17:20)]
 Tg_CvsK_counts <- RAWcounts_genes[,c(1:8)]
 WT_Cvs_3xTg_M_counts <- RAWcounts_genes[,c(13:16, 9:12)]
+WT_Cvs_3xTg_K_counts <- RAWcounts_genes[,c(13:16, 4:8)]
 
 group_pairs43 <- c(1,1,1,1,2,2,2)
 group_pairs44 <- c(1,1,1,1,2,2,2,2)
 group_pairs34 <- c(1,1,1,2,2,2,2)
 group_pairs35 <- c(1,1,1,2,2,2,2,2)
+group_pairs45 <- c(1,1,1,1,2,2,2,2,2)
 
 #create TCC objects
 WTvs3xTg_C <- new("TCC", WTvs3xTg_C_counts, group = group_pairs43)
@@ -94,6 +96,7 @@ Tg_CvsM <- new("TCC", Tg_CvsM_counts, group = group_pairs34)
 WT_CvsK <- new("TCC", WT_CvsK_counts, group = group_pairs44)
 Tg_CvsK <- new("TCC", Tg_CvsK_counts, group = group_pairs35)
 WT_Cvs_3xTg_M <- new("TCC", WT_Cvs_3xTg_M_counts, group = group_pairs44)
+WT_Cvs_3xTg_K <- new("TCC", WT_Cvs_3xTg_K_counts, group = group_pairs45)
 
 WTvs3xTg_C <- degAnalysis(WTvs3xTg_C)
 WTvs3xTg_C_analysis <- degAnalysisFile(WTvs3xTg_C)
@@ -125,7 +128,13 @@ WT_Cvs_3xTg_M_analysis <- degAnalysisFile(WT_Cvs_3xTg_M)
 WT_Cvs_3xTg_M_analysis %>% mutate("DEG_pval001" = WT_Cvs_3xTg_M_analysis$p.value < 0.01) -> WT_Cvs_3xTg_M_analysis
 write.csv(WT_Cvs_3xTg_M_analysis, file = "WT_Cvs_3xTg_M.csv")
 
-comparison_list <- c("WTvs3xTg_C_analysis", "WT_CvsK_analysis", "WT_CvsM_analysis", "Tg_CvsM_analysis", "Tg_CvsK_analysis", "WT_Cvs_3xTg_M_analysis" )
+WT_Cvs_3xTg_K <- degAnalysis(WT_Cvs_3xTg_K)
+WT_Cvs_3xTg_K_analysis <- degAnalysisFile(WT_Cvs_3xTg_K)
+WT_Cvs_3xTg_K_analysis %>% mutate("DEG_pval001" = WT_Cvs_3xTg_K_analysis$p.value < 0.01) -> WT_Cvs_3xTg_K_analysis
+write.csv(WT_Cvs_3xTg_K_analysis, file = "WT_Cvs_3xTg_K.csv")
+
+comparison_list <- "WT_Cvs_3xTg_K_analysis"
+  #c("WTvs3xTg_C_analysis", "WT_CvsK_analysis", "WT_CvsM_analysis", "Tg_CvsM_analysis", "Tg_CvsK_analysis", "WT_Cvs_3xTg_M_analysis" )
 
 #pathway analysis on all DEGs
 for (i in comparison_list){

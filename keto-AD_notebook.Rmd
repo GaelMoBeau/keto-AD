@@ -163,3 +163,10 @@ for (i in comparison_list){
 }
 ```
 
+Output normalized and s-score scaled data
+```{r}
+write.csv(normCounts_transcripts, file = "./NormCounts.csv")
+zscore_normCounts <- t(scale(t(normCounts_transcripts)))[,c(13:24, 1:12)]
+write.csv(zscore_normCounts, file = "./NormCounts_zscore.csv")
+```
+
